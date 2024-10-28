@@ -30,6 +30,10 @@ clk350 = 1'b0;
 rstn   = 1'b0;
 #100;
 rstn   = 1'b1;
+#1600;
+@(posedge clk350);#1;
+force Frotaegis_Top_inst.Collect = 1'b0;
+
 end
 always #5     clk200 = ~clk200;
 always #2.857 clk350 = ~clk350;
@@ -41,16 +45,4 @@ Frotaegis_Top Frotaegis_Top_inst(
     .rstn  (rstn  )
 );
 
-wire [3:0] ADD;
-wire [3:0] SUB;
-initial begin 
-force Frotaegis_Top_inst.Collect = 1'b1;
-force ADD = Frotaegis_Top_inst.Frotaegis_Design_inst.genblk1[0].Histagram_chane_inst.WR_F0MemData ;
-force SUB = Frotaegis_Top_inst.Frotaegis_Design_inst.genblk1[0].Histagram_chane_inst.Subdata      ;
-#2050;
-@(posedge clk350);#1;
-force Frotaegis_Top_inst.Collect = 1'b0;
-end 
-
-wire Check = (ADD == SUB) ? 1'b1 :1'b0;
 endmodule

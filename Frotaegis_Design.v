@@ -35,7 +35,19 @@ parameter LENGTH_SIZE =  6
 	input Collect,
 	
     input Valid ,
-    input [DATA_SIZE-1:0] Data
+    input [DATA_SIZE-1:0] Data,
+
+	output [DATA_SIZE-1:0]  FramData,
+	output [LENGTH_SIZE-1:0] FramAdd,
+	output FramEn,                   
+
+	output SortValid ,
+    output [DATA_SIZE -1:0]  MaxCountData1,
+    output [LENGTH_SIZE-1:0] MaxCount1,
+    output [DATA_SIZE -1:0]  MaxCountData2,
+    output [LENGTH_SIZE-1:0] MaxCount2,
+    output [DATA_SIZE -1:0]  MaxCountData3,
+    output [LENGTH_SIZE-1:0] MaxCount3
 
     );
 ////////////////// Split Data to two Channels //////////////////   
@@ -163,21 +175,67 @@ always @(posedge clk or negedge rstn)
 			  end
 
 reg [2:0] FremEn;
-reg [3:0] HisEn ;
+reg [4:0] HisEn ;
 always @(posedge clk or negedge rstn)
     if (!rstn) begin
 			FremEn <= 3'b000;
-			HisEn  <= 4'b0000;
+			HisEn  <= 5'b00000;
 				end
 	 else begin 
 			FremEn <= {FremEn[2:0],FremMemRD};
-			HisEn  <= {HisEn [3:0],HisMemRD };
+			HisEn  <= {HisEn [4:0],HisMemRD };
 		end
 
-wire [DATA_SIZE-1:0]  FramData   = Send_FeamData_Reg;
-wire [LENGTH_SIZE-1:0] FramAdd   = DelReadCounter[2];
-wire FramEn                      = FremEn[2];
+assign FramData = Send_FeamData_Reg;
+assign FramAdd  = DelReadCounter[2];
+assign FramEn   = FremEn[2];
 wire [LENGTH_SIZE-1:0] HistaData = Send_His_Reg[2];
 wire [DATA_SIZE-1:0]   HistaAdd  = (HisEn[3]) ? DelReadCounter[3] : 0;
 wire HistaEn                     = HisEn[3];
+
+wire                   SortComper  [0:3];
+wire [DATA_SIZE-1:0]   SortData    [0:3];
+wire [LENGTH_SIZE-1:0] SortCountNum[0:3];
+assign SortComper  [0] = 0;
+assign SortData    [0] = 0;
+assign SortCountNum[0] = 0;
+
+wire rst = (DelCollect[3:0] == 4'hF) ? 1'b1 : 1'b0;
+generate 
+   for (i=0;i<3;i=i+1) begin 
+CompReg
+#(
+.DATA_SIZE   (DATA_SIZE  ),
+.DATA_NUM    (DATA_NUM   ),
+.LENGTH      (LENGTH     ),
+.LENGTH_SIZE (LENGTH_SIZE)
+)
+CompReg_inst
+(
+    .clk(clk),
+    .rst(rst),
+    
+    .PreComper  (SortComper  [i]),
+    .PreData    (SortData    [i]),
+    .PreCountNum(SortCountNum[i]),
+    .Data       (HistaAdd    ),
+    .InCountNum (HistaData   ),
+    .In_Valid   (HistaEn   ),
+                
+    .NeComper   (SortComper  [i+1]),
+    .NeData     (SortData    [i+1]),
+    .NeCountNum (SortCountNum[i+1])
+    );
+   end 
+endgenerate
+
+assign SortValid = (HisEn == 5'b10000) ? 1'b1 : 1'b0;
+
+assign MaxCountData1 = SortData[1];
+assign MaxCount1     = SortCountNum[1];
+assign MaxCountData2 = SortData[2];
+assign MaxCount2     = SortCountNum[2];
+assign MaxCountData3 = SortData[3];
+assign MaxCount3     = SortCountNum[3];
+
 endmodule

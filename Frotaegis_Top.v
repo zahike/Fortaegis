@@ -33,7 +33,7 @@ parameter LENGTH_SIZE =  6
     input rstn
     );
 
-wire Collect;
+wire Collect = 1'b1;
 wire [DATA_SIZE-1:0] Data;
 wire Valid;
 Data_Gen
@@ -48,6 +48,18 @@ Data_Gen_inst
     .Valid(Valid),
     .Data (Data )
     );
+
+wire [DATA_SIZE-1:0]   FramData     ;
+wire [LENGTH_SIZE-1:0] FramAdd      ;
+wire                   FramEn       ;
+
+wire SortValid ;
+wire [DATA_SIZE -1:0]  MaxCountData1;
+wire [LENGTH_SIZE-1:0] MaxCount1    ;
+wire [DATA_SIZE -1:0]  MaxCountData2;
+wire [LENGTH_SIZE-1:0] MaxCount2    ;
+wire [DATA_SIZE -1:0]  MaxCountData3;
+wire [LENGTH_SIZE-1:0] MaxCount3    ;
 
 Frotaegis_Design
 #(
@@ -66,7 +78,20 @@ Frotaegis_Design_inst
     .Collect(Collect),
 	
     .Valid (Valid),
-    .Data  (Data)
+    .Data  (Data),
+	
+	.FramData     (FramData     ),
+	.FramAdd      (FramAdd      ),
+	.FramEn       (FramEn       ),
+	
+	.SortValid    (SortValid),
+    .MaxCountData1(MaxCountData1),
+    .MaxCount1    (MaxCount1    ),
+    .MaxCountData2(MaxCountData2),
+    .MaxCount2    (MaxCount2    ),
+    .MaxCountData3(MaxCountData3),
+    .MaxCount3    (MaxCount3    )
+	
     );
     
 endmodule
