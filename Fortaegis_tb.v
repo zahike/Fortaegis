@@ -30,7 +30,7 @@ clk350 = 1'b0;
 rstn   = 1'b0;
 #100;
 rstn   = 1'b1;
-#1600;
+#2600;
 @(posedge clk350);#1;
 force Frotaegis_Top_inst.Collect = 1'b0;
 

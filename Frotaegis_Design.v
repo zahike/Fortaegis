@@ -111,10 +111,11 @@ Histagram_chane_inst
 	end	
 endgenerate 
 
-reg [15:0] DelCollect;
+////////////////// Control Logic //////////////////
+reg [19:0] DelCollect;
 always @(posedge clk or negedge rstn)
-    if (!rstn)  DelCollect <= 16'h0000;
-	 else DelCollect <= {DelCollect[14:0],Collect};
+    if (!rstn)  DelCollect <= 20'h00000;
+	 else DelCollect <= {DelCollect[18:0],Collect};
 
 reg [LENGTH_SIZE-1:0] ReadCounter;
 reg                   ReadCounterOn;
@@ -130,15 +131,9 @@ always @(posedge clk or negedge rstn)
 				end
 	 else begin 
 		ReadCounter   <= 0;
-		if (DelCollect == 16'hc000) ReadCounterOn <= 1'b1;
+		if (DelCollect == 20'hc0000) ReadCounterOn <= 1'b1;
 		 else ReadCounterOn <= 1'b0;
 			end
-
-assign FremMemRD    = {4{ReadCounterOn}};
-assign FremMemRDAdd = ReadCounter[LENGTH_SIZE-1:2];
-assign HisMemRD    = (ReadCounter[LENGTH_SIZE-1:DATA_SIZE] == 0) ? {4{ReadCounterOn}}      : 0;
-assign HisMemRDAdd = (ReadCounter[LENGTH_SIZE-1:DATA_SIZE] == 0) ? ReadCounter[DATA_SIZE-1:0] : 0; 
-
 
 reg [LENGTH_SIZE-1:0] DelReadCounter[0:3];
 always @(posedge clk or negedge rstn)
@@ -154,12 +149,30 @@ always @(posedge clk or negedge rstn)
 			DelReadCounter[2] <= DelReadCounter[1];
 			DelReadCounter[3] <= DelReadCounter[2];
 				end
+
+////////////////// Collect Fram  //////////////////
+				
+assign FremMemRD    = {4{ReadCounterOn}};
+assign FremMemRDAdd = ReadCounter[LENGTH_SIZE-1:2];
+
 wire [1:0] SelectFrame = DelReadCounter[1][1:0];
 reg [DATA_SIZE-1:0] Send_FeamData_Reg;
 always @(posedge clk or negedge rstn)
     if (!rstn) Send_FeamData_Reg <= 0;
 	 else Send_FeamData_Reg <= FremMemRDData[SelectFrame];
-		
+
+reg [2:0] FremEn;
+always @(posedge clk or negedge rstn)
+    if (!rstn) FremEn <= 3'b000;
+	 else FremEn <= {FremEn[2:0],FremMemRD};
+
+assign FramData = Send_FeamData_Reg;
+assign FramAdd  = DelReadCounter[2];
+assign FramEn   = FremEn[2];
+
+////////////////// Calculate Top Values //////////////////
+assign HisMemRD    = (ReadCounter[LENGTH_SIZE-1:DATA_SIZE] == 0) ? {4{ReadCounterOn}}      : 0;
+assign HisMemRDAdd = (ReadCounter[LENGTH_SIZE-1:DATA_SIZE] == 0) ? ReadCounter[DATA_SIZE-1:0] : 0; 
 
 reg [LENGTH_SIZE-1:0] Send_His_Reg[0:2];
 always @(posedge clk or negedge rstn)
@@ -174,24 +187,14 @@ always @(posedge clk or negedge rstn)
 			Send_His_Reg[2] <= Send_His_Reg[0] + Send_His_Reg[1];
 			  end
 
-reg [2:0] FremEn;
 reg [4:0] HisEn ;
 always @(posedge clk or negedge rstn)
-    if (!rstn) begin
-			FremEn <= 3'b000;
-			HisEn  <= 5'b00000;
-				end
-	 else begin 
-			FremEn <= {FremEn[2:0],FremMemRD};
-			HisEn  <= {HisEn [4:0],HisMemRD };
-		end
+    if (!rstn)  HisEn  <= 5'b00000;
+	 else HisEn  <= {HisEn [3:0],HisMemRD };
 
-assign FramData = Send_FeamData_Reg;
-assign FramAdd  = DelReadCounter[2];
-assign FramEn   = FremEn[2];
 wire [LENGTH_SIZE-1:0] HistaData = Send_His_Reg[2];
 wire [DATA_SIZE-1:0]   HistaAdd  = (HisEn[3]) ? DelReadCounter[3] : 0;
-wire HistaEn                     = HisEn[3];
+wire                   HistaEn   = HisEn[3];
 
 wire                   SortComper  [0:3];
 wire [DATA_SIZE-1:0]   SortData    [0:3];
@@ -200,7 +203,7 @@ assign SortComper  [0] = 0;
 assign SortData    [0] = 0;
 assign SortCountNum[0] = 0;
 
-wire rst = (DelCollect[3:0] == 4'hF) ? 1'b1 : 1'b0;
+wire DisableComper = (DelCollect[3:0] == 4'hF) ? 1'b1 : 1'b0;
 generate 
    for (i=0;i<3;i=i+1) begin 
 CompReg
@@ -213,7 +216,7 @@ CompReg
 CompReg_inst
 (
     .clk(clk),
-    .rst(rst),
+    .rst(DisableComper),
     
     .PreComper  (SortComper  [i]),
     .PreData    (SortData    [i]),

@@ -35,13 +35,13 @@ parameter LENGTH_SIZE =  6
     input Valid ,
     input [DATA_SIZE-1:0] Data,
 	
-	input                  FremMemRD    ,
+	input                    FremMemRD    ,
 	input  [LENGTH_SIZE-3:0] FremMemRDAdd ,
 	output [DATA_SIZE-1:0]   FremMemRDData,
 
-	input                  HisMemRD    ,
-	input  [DATA_SIZE-1:0]  HisMemRDAdd ,
-	output [LENGTH_SIZE-1:0]   HisMemRDData
+	input                    HisMemRD    ,
+	input  [DATA_SIZE-1:0]   HisMemRDAdd ,
+	output [LENGTH_SIZE-1:0] HisMemRDData
 	
     );
 	
@@ -65,96 +65,106 @@ always @(posedge clk or negedge rstn)
 	if (!rstn) SynFIFOval <= 1'b0;
 	 else SynFIFOval <= rd_en;
 	 
-/////////////////////// Fram FIFO ///////////////////////
-reg [LENGTH_SIZE-3:0] F0WRMem;
-reg [LENGTH_SIZE-3:0] F0RDMem;
-wire [LENGTH_SIZE-3:0] FullAdd = F0RDMem-1;
-wire FIFOFull_rd = (F0WRMem == FullAdd) ? 1'b1 : 1'b0;
-reg  FIFOFull_wr;
+////////////////////////////// Fram FIFO Logic //////////////////////////////
+reg [LENGTH_SIZE-3:0] FramMemAdd;
 always @(posedge clk or negedge rstn)
-	if (!rstn)  FIFOFull_wr <= 1'b0;
-     else if (SynFIFOval && FIFOFull_rd) FIFOFull_wr <= 1'b1;
-
+	if (!rstn) FramMemAdd <= 0;
+	 else if (SynFIFOval) FramMemAdd <= FramMemAdd + 1;
+reg FIFOFull;
+reg FirstRep;
+wire FirstFIFOFull = (!FIFOFull && (FramMemAdd == LENGTH/4-1)) ? 1'b1 : 1'b0;
 always @(posedge clk or negedge rstn)
-	if (!rstn) begin 
-		F0WRMem <= 0;
-		F0RDMem <= 0;
-			end
-	 else if (SynFIFOval) begin 
-			F0WRMem <= F0WRMem + 1; 
-			if (FIFOFull_wr) begin
-			         F0RDMem <= F0RDMem + 1;
-		                   end
-			end
-wire [DATA_SIZE-1:0] WR_F0MemData = dout[DATA_SIZE-1:0];
-wire WR_F0Mem = SynFIFOval;
-wire RD_F0Mem = SynFIFOval && FIFOFull_wr;
+	if (!rstn) begin
+			FIFOFull <= 1'b0;
+			FirstRep <= 1'b0;
+				end
+	 else if (!FIFOFull) begin 
+		if (FirstFIFOFull && SynFIFOval) FirstRep <= 1'b1;
+	    if (FirstRep && rd_en) begin 
+							FIFOFull <= 1'b1;
+							FirstRep <= 1'b0;
+								end
+						end
+	 else if (FremMemRD) FIFOFull <= 1'b0;
+	 
 ////////////////// Frame FIFO //////////////////
-wire[LENGTH_SIZE-3:0] CalcReadAddr = F0RDMem + FremMemRDAdd;
-reg [DATA_SIZE-1:0] F0Mem [0:(LENGTH/4)-1];
-reg [DATA_SIZE-1:0] F0Mem_out;
+wire FramMem_WRen   = SynFIFOval;
+wire [LENGTH_SIZE-3:0] FramMem_WRadd  = FramMemAdd;
+wire [DATA_SIZE-1:0] FramMem_WRdata = SynFIFOdata;
+wire FramMem_RDen   = ((SynFIFOval && FIFOFull)||FremMemRD) ? 1'b1 : 1'b0;
+wire [LENGTH_SIZE-3:0] FramMem_RDadd  = (FremMemRD) ? FremMemRDAdd + FramMemAdd : FramMemAdd;
+
+reg [DATA_SIZE-1:0] FramMem [0:(LENGTH/4)-1];
+reg [DATA_SIZE-1:0] FramMem_out;
 always @(posedge clk)
-	if (WR_F0Mem) F0Mem[F0WRMem] <= WR_F0MemData;
+	if (FramMem_WRen) FramMem[FramMem_WRadd] <= FramMem_WRdata;
 always @(posedge clk)
-	if (RD_F0Mem) F0Mem_out <= F0Mem[F0RDMem];
-	 else if (FremMemRD) F0Mem_out <= F0Mem[CalcReadAddr];
+	if (FramMem_RDen) FramMem_out <= FramMem[FramMem_RDadd];
+//////////////// End Frame FIFO ////////////////
 
 reg[DATA_SIZE-1:0]FremMemRDDataReg;
 always @(posedge clk or negedge rstn)
 	if (!rstn) FremMemRDDataReg <= 0;
-	 else FremMemRDDataReg <= F0Mem_out;	
+	 else FremMemRDDataReg <= FramMem_out;	
 assign FremMemRDData = FremMemRDDataReg;
-////////////////// End Of Frame FIFO //////////////////
-reg [DATA_SIZE-1:0]Subdata;
-reg[2:0] Subvalid;
+
+////////////////////////////// Histogram Logic //////////////////////////////
+wire HisRDAdd = SynFIFOval;	
+reg  HisWRAdd;	
+reg  HisRDSub;	
+reg  HisWRSub;
 always @(posedge clk or negedge rstn)
 	if (!rstn) begin
-	   Subdata  <= 0;
-	   Subvalid <= 3'b000;
-	       end
-	 else begin
-	   Subdata  <= F0Mem_out;
-	   Subvalid <= {Subvalid[1:0],RD_F0Mem};
-        end
-//////////////////////////// Histagram Mem //////////////////////////// 	 
-wire RD_AddH0Mem = WR_F0Mem;
-reg  WR_AddH0Mem;
-wire RD_SubH0Mem = Subvalid[2];
-reg  WR_SubH0Mem  ;
-always @(posedge clk or negedge rstn)
-	if (!rstn) begin 
-		WR_AddH0Mem  <= 1'b0;
-		WR_SubH0Mem  <= 1'b0;
+         HisWRAdd <= 1'b0;	
+		 HisRDSub <= 1'b0;	
+         HisWRSub <= 1'b0;
 			end
-	 else  begin 
-		WR_AddH0Mem <= RD_AddH0Mem;
-		WR_SubH0Mem <= RD_SubH0Mem;
-		   end 
+	 else begin 
+        HisWRAdd <= HisRDAdd;	
+		 if (FIFOFull) begin
+			HisRDSub <= HisWRAdd;
+			HisWRSub <= HisRDSub;
+			 end
+		  end
 	 
-////////////////// Histegram MEM //////////////////
-reg [LENGTH_SIZE-1:0] H0Mem [0:DATA_NUM-1];
+////////////////// Histogram Logic //////////////////
+wire [LENGTH_SIZE-1:0] HisIncre;
+wire [LENGTH_SIZE-1:0] HisDecre;
+
+wire HisMem_WRen   = HisWRAdd || HisWRSub;
+wire [LENGTH_SIZE-3:0] HisMem_WRadd  = (HisWRAdd) ? SynFIFOdata :
+                                       (HisWRSub) ? FramMem_out : 0;
+wire [DATA_SIZE-1:0] HisMem_WRdata = (HisWRAdd) ? HisIncre : 
+                                     (HisWRSub) ? HisDecre : 0;
+wire HisMem_RDen   = (HisRDAdd || HisRDSub || HisMemRD) ? 1'b1 : 1'b0;
+wire [LENGTH_SIZE-3:0] HisMem_RDadd  = (HisRDAdd) ? SynFIFOdata : 
+									   (HisRDSub) ? FramMem_out : 
+									   (HisMemRD) ? HisMemRDAdd : 0;
+
+reg [LENGTH_SIZE-1:0] HisMem [0:DATA_NUM-1];
+reg [LENGTH_SIZE-1:0] HisMem_out;
   generate
 begin: init_bram_to_zero
       integer ram_index;
       initial
         for (ram_index = 0; ram_index < DATA_NUM; ram_index = ram_index + 1)
-          H0Mem[ram_index] = {DATA_NUM{1'b0}};
+          HisMem[ram_index] = {LENGTH_SIZE{1'b0}};
     end
   endgenerate
-reg [LENGTH_SIZE-1:0] H0Mem_out;
 always @(posedge clk)
-	if (WR_AddH0Mem) H0Mem[WR_F0MemData] <= H0Mem_out + 1;
-	 else if (WR_SubH0Mem) H0Mem[Subdata] <= H0Mem_out - 1;
+	if (HisMem_WRen) HisMem[HisMem_WRadd] <= HisMem_WRdata;
 always @(posedge clk)
-	if (RD_AddH0Mem) H0Mem_out <= H0Mem[WR_F0MemData];
-	 else if(RD_SubH0Mem) H0Mem_out <= H0Mem[Subdata];
-	 else if(HisMemRD) H0Mem_out <= H0Mem[HisMemRDAdd];
+	if (HisMem_RDen) HisMem_out <= HisMem[HisMem_RDadd];
+
+assign HisIncre = HisMem_out + 1;
+assign HisDecre = HisMem_out - 1;
+	
+//////////////// End Histogram Logic ////////////////
 
 reg[LENGTH_SIZE-1:0]HisMemRDDataReg;
 always @(posedge clk or negedge rstn)
 	if (!rstn) HisMemRDDataReg <= 0;
-	 else HisMemRDDataReg <= H0Mem_out;		
+	 else HisMemRDDataReg <= HisMem_out;		
 assign HisMemRDData = HisMemRDDataReg;	  
-////////////////// Histegram MEM //////////////////
 	
 endmodule
