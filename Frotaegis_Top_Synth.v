@@ -114,6 +114,14 @@ parameter LENGTH_SIZE =  15
         .S_AXIS_S2MM_0_tvalid(S_AXIS_S2MM_0_tvalid),
         .peripheral_aresetn(rstn));
 
+wire SortValid ;
+wire StartColl;
+wire [DATA_SIZE -1:0]  MaxCountData1;
+wire [LENGTH_SIZE-1:0] MaxCount1    ;
+wire [DATA_SIZE -1:0]  MaxCountData2;
+wire [LENGTH_SIZE-1:0] MaxCount2    ;
+wire [DATA_SIZE -1:0]  MaxCountData3;
+wire [LENGTH_SIZE-1:0] MaxCount3    ;
 
 Registers
 #(
@@ -169,13 +177,6 @@ assign S_AXIS_S2MM_0_tlast  = (FramAdd == LENGTH-1) ? 1'b1 : 1'b0;
 //assign S_AXIS_S2MM_0_tready ;
 assign S_AXIS_S2MM_0_tvalid = FramEn;
 
-wire SortValid ;
-wire [DATA_SIZE -1:0]  MaxCountData1;
-wire [LENGTH_SIZE-1:0] MaxCount1    ;
-wire [DATA_SIZE -1:0]  MaxCountData2;
-wire [LENGTH_SIZE-1:0] MaxCount2    ;
-wire [DATA_SIZE -1:0]  MaxCountData3;
-wire [LENGTH_SIZE-1:0] MaxCount3    ;
 
 Frotaegis_Design
 #(

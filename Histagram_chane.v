@@ -94,6 +94,7 @@ wire [DATA_SIZE-1:0] FramMem_WRdata = SynFIFOdata;
 wire FramMem_RDen   = ((SynFIFOval && FIFOFull)||FremMemRD) ? 1'b1 : 1'b0;
 wire [LENGTH_SIZE-3:0] FramMem_RDadd  = (FremMemRD) ? FremMemRDAdd + FramMemAdd : FramMemAdd;
 
+   (* ram_style="block" *)
 reg [DATA_SIZE-1:0] FramMem [0:(LENGTH/4)-1];
 reg [DATA_SIZE-1:0] FramMem_out;
 always @(posedge clk)
@@ -132,15 +133,15 @@ wire [LENGTH_SIZE-1:0] HisIncre;
 wire [LENGTH_SIZE-1:0] HisDecre;
 
 wire HisMem_WRen   = HisWRAdd || HisWRSub;
-wire [LENGTH_SIZE-3:0] HisMem_WRadd  = (HisWRAdd) ? SynFIFOdata :
-                                       (HisWRSub) ? FramMem_out : 0;
-wire [DATA_SIZE-1:0] HisMem_WRdata = (HisWRAdd) ? HisIncre : 
-                                     (HisWRSub) ? HisDecre : 0;
+wire [DATA_SIZE-1:0] HisMem_WRadd  = (HisWRAdd) ? SynFIFOdata :
+                                     (HisWRSub) ? FramMem_out : 0;
+wire [LENGTH_SIZE-1:0] HisMem_WRdata = (HisWRAdd) ? HisIncre : 
+                                       (HisWRSub) ? HisDecre : 0;
 wire HisMem_RDen   = (HisRDAdd || HisRDSub || HisMemRD) ? 1'b1 : 1'b0;
-wire [LENGTH_SIZE-3:0] HisMem_RDadd  = (HisRDAdd) ? SynFIFOdata : 
-									   (HisRDSub) ? FramMem_out : 
-									   (HisMemRD) ? HisMemRDAdd : 0;
-
+wire [DATA_SIZE-1:0] HisMem_RDadd  = (HisRDAdd) ? SynFIFOdata : 
+                                     (HisRDSub) ? FramMem_out : 
+                                     (HisMemRD) ? HisMemRDAdd : 0;
+   (* ram_style="block" *)
 reg [LENGTH_SIZE-1:0] HisMem [0:DATA_NUM-1];
 reg [LENGTH_SIZE-1:0] HisMem_out;
   generate
