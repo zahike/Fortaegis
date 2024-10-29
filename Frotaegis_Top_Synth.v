@@ -22,10 +22,10 @@
 
 module Frotaegis_Top
 #(
-parameter DATA_SIZE   =  4,
-parameter DATA_NUM    = 16,
-parameter LENGTH      = 64,
-parameter LENGTH_SIZE =  6
+parameter DATA_SIZE   =  12,
+parameter DATA_NUM    = 4096,
+parameter LENGTH      = 32768,
+parameter LENGTH_SIZE =  15
 )
 (
   inout [14:0]DDR_addr,
