@@ -28,7 +28,6 @@ parameter LENGTH      = 64,
 parameter LENGTH_SIZE =  6
 )
 (
-    input clk200,
     input clk   ,
     input rstn  ,
                 
@@ -45,53 +44,25 @@ parameter LENGTH_SIZE =  6
 	
     );
 	
-//----------- INPUT CLOCK Synchronize ---// INST_TAG
-wire [11:0] dout;
-wire empty;
-wire rd_en = !empty;
-fifo_generator_0 fifo_generator_0 (
-  .wr_clk(clk200),  // input wire wr_clk
-  .rd_clk(clk),  // input wire rd_clk
-  .din({{12-DATA_SIZE{1'b0}},Data}),        // input wire [11 : 0] din
-  .wr_en(Valid),    // input wire wr_en
-  .rd_en(rd_en),    // input wire rd_en
-  .dout(dout),      // output wire [11 : 0] dout
-  .full(),      // output wire full
-  .empty(empty)    // output wire empty
-);
-wire [DATA_SIZE-1:0] SynFIFOdata = dout[DATA_SIZE-1:0];
-reg SynFIFOval;
-always @(posedge clk or negedge rstn)
-	if (!rstn) SynFIFOval <= 1'b0;
-	 else SynFIFOval <= rd_en;
 	 
 ////////////////////////////// Fram FIFO Logic //////////////////////////////
 reg [LENGTH_SIZE-3:0] FramMemAdd;
 always @(posedge clk or negedge rstn)
 	if (!rstn) FramMemAdd <= 0;
-	 else if (SynFIFOval) FramMemAdd <= FramMemAdd + 1;
+	 else if (Valid) FramMemAdd <= FramMemAdd + 1;
 reg FIFOFull;
-reg FirstRep;
 wire FirstFIFOFull = (!FIFOFull && (FramMemAdd == LENGTH/4-1)) ? 1'b1 : 1'b0;
 always @(posedge clk or negedge rstn)
-	if (!rstn) begin
-			FIFOFull <= 1'b0;
-			FirstRep <= 1'b0;
-				end
-	 else if (!FIFOFull) begin 
-		if (FirstFIFOFull && SynFIFOval) FirstRep <= 1'b1;
-	    if (FirstRep && rd_en) begin 
-							FIFOFull <= 1'b1;
-							FirstRep <= 1'b0;
-								end
-						end
+	if (!rstn) FIFOFull <= 1'b0;
+	 else if (!FIFOFull)  
+		if (FirstFIFOFull && Valid) FIFOFull <= 1'b1;
 	 else if (FremMemRD) FIFOFull <= 1'b0;
 	 
 ////////////////// Frame FIFO //////////////////
-wire FramMem_WRen   = SynFIFOval;
+wire FramMem_WRen   = Valid;
 wire [LENGTH_SIZE-3:0] FramMem_WRadd  = FramMemAdd;
-wire [DATA_SIZE-1:0] FramMem_WRdata = SynFIFOdata;
-wire FramMem_RDen   = ((SynFIFOval && FIFOFull)||FremMemRD) ? 1'b1 : 1'b0;
+wire [DATA_SIZE-1:0] FramMem_WRdata = Data;
+wire FramMem_RDen   = ((Valid && FIFOFull)||FremMemRD) ? 1'b1 : 1'b0;
 wire [LENGTH_SIZE-3:0] FramMem_RDadd  = (FremMemRD) ? FremMemRDAdd + FramMemAdd : FramMemAdd;
 
    (* ram_style="block" *)
@@ -110,36 +81,36 @@ always @(posedge clk or negedge rstn)
 assign FremMemRDData = FremMemRDDataReg;
 
 ////////////////////////////// Histogram Logic //////////////////////////////
-wire HisRDAdd = SynFIFOval;	
+wire HisRDAdd = Valid;	
 reg  HisWRAdd;	
-reg  HisRDSub;	
+reg[1:0]  HisRDSub;	
 reg  HisWRSub;
 always @(posedge clk or negedge rstn)
+	if (!rstn) HisWRAdd <= 1'b0;	
+	 else HisWRAdd <= HisRDAdd;	
+
+always @(posedge clk or negedge rstn)
 	if (!rstn) begin
-         HisWRAdd <= 1'b0;	
-		 HisRDSub <= 1'b0;	
+		 HisRDSub <= 2'b00;
          HisWRSub <= 1'b0;
 			end
-	 else begin 
-        HisWRAdd <= HisRDAdd;	
-		 if (FIFOFull) begin
-			HisRDSub <= HisWRAdd;
-			HisWRSub <= HisRDSub;
+	 else begin
+			HisRDSub <= {HisRDSub[0],(Valid && FIFOFull)};
+			HisWRSub <= HisRDSub[1];
 			 end
-		  end
 	 
 ////////////////// Histogram Logic //////////////////
 wire [LENGTH_SIZE-1:0] HisIncre;
 wire [LENGTH_SIZE-1:0] HisDecre;
 
 wire HisMem_WRen   = HisWRAdd || HisWRSub;
-wire [DATA_SIZE-1:0] HisMem_WRadd  = (HisWRAdd) ? SynFIFOdata :
+wire [DATA_SIZE-1:0] HisMem_WRadd  = (HisWRAdd) ? Data :
                                      (HisWRSub) ? FramMem_out : 0;
 wire [LENGTH_SIZE-1:0] HisMem_WRdata = (HisWRAdd) ? HisIncre : 
                                        (HisWRSub) ? HisDecre : 0;
-wire HisMem_RDen   = (HisRDAdd || HisRDSub || HisMemRD) ? 1'b1 : 1'b0;
-wire [DATA_SIZE-1:0] HisMem_RDadd  = (HisRDAdd) ? SynFIFOdata : 
-                                     (HisRDSub) ? FramMem_out : 
+wire HisMem_RDen   = (HisRDAdd || HisRDSub[1] || HisMemRD) ? 1'b1 : 1'b0;
+wire [DATA_SIZE-1:0] HisMem_RDadd  = (HisRDAdd) ? Data : 
+                                     (HisRDSub[1]) ? FramMem_out : 
                                      (HisMemRD) ? HisMemRDAdd : 0;
    (* ram_style="block" *)
 reg [LENGTH_SIZE-1:0] HisMem [0:DATA_NUM-1];

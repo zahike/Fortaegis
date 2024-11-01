@@ -28,7 +28,7 @@ parameter LENGTH      = 64,
 parameter LENGTH_SIZE =  6
 )
 (
-    input clk200,
+	input clk200,
     input clk   ,
     input rstn  ,
 
@@ -52,7 +52,8 @@ parameter LENGTH_SIZE =  6
     );
 ////////////////// Split Data to two Channels //////////////////   
 reg [1:0] Split;
-reg [3:0] WriteData;
+reg       SplitValid;
+reg [0:3]           WriteValid;
 reg [DATA_SIZE-1:0] RegData[0:3];
 
 wire                   FremMemRD    ;
@@ -62,27 +63,61 @@ wire                   HisMemRD     ;
 wire [DATA_SIZE-1:0]   HisMemRDAdd  ;
 wire [LENGTH_SIZE-1:0] HisMemRDData[0:3] ;
 
-always @(posedge clk200 or negedge rstn)
-    if (!rstn) Split <= 2'b00;
-	 else if (!Collect) Split <= 2'b00;
-     else if (Valid) Split <= Split +1;	
+reg [2:0]DevValid200;
+reg [2:0]DevValid350;
+always@(posedge clk200 or negedge rstn)
+	if (!rstn) DevValid200 <= 3'b000;
+	 else DevValid200 <= {DevValid200[1:0],(Collect && Valid)};
+always@(posedge clk or negedge rstn)
+	if (!rstn) DevValid350 <= 3'b000;
+	 else DevValid350 <= {DevValid350[1:0],DevValid200[2]};
+//----------- INPUT CLOCK Synchronize ---// INST_TAG
+wire [11:0] dout;
+wire empty;
+wire rd_en = !empty;
+fifo_generator_0 fifo_generator_0 (
+  .wr_clk(clk200),  // input wire wr_clk
+  .rd_clk(clk),  // input wire rd_clk
+  .din({{12-DATA_SIZE{1'b0}},Data}),        // input wire [11 : 0] din
+  .wr_en(Valid),    // input wire wr_en
+  .rd_en(rd_en),    // input wire rd_en
+  .dout(dout),      // output wire [11 : 0] dout
+  .full(),      // output wire full
+  .empty(empty)    // output wire empty
+);
+
+always @(posedge clk or negedge rstn)
+    if (!rstn) begin 
+			Split <= 2'b00;
+			SplitValid <= 1'b0;
+				end
+//	 else if (!Collect) begin 
+	 else if (!DevValid350[1]) begin 
+//			Split <= 2'b00;
+			SplitValid <= 1'b0;
+				end
+     else begin 
+			SplitValid <= rd_en;
+			if (SplitValid) Split <= Split +1;	
+				end
 genvar i;
 generate 
 	for (i=0;i<4;i=i+1) begin 
-		always @(posedge clk200 or negedge rstn)
+		always @(posedge clk or negedge rstn)
 			if (!rstn) begin 
-				WriteData[i] <= 1'b0;
-				RegData[i]   <=    0;
+				WriteValid[i] <= 1'b0;
+				RegData[i]    <=    0;
 					end 
-			 else if (!Collect) begin 
-				WriteData[i] <= 1'b0;
-				RegData[i]   <=    0;
+			 else if (!DevValid350[1]) begin 
+				WriteValid[i] <= 1'b0;
+				RegData[i]    <=    0;
 					end 
-			 else if (Valid && (Split == i)) begin 
-					WriteData[i] <= 1'b1;
-					RegData[i]   <= Data;
+			 else if (SplitValid && (Split == i)) begin 
+					WriteValid[i] <= SplitValid;
+					RegData[i]    <= dout[DATA_SIZE-1:0];
 						end
-				   else WriteData[i] <= 1'b0;
+				   else WriteValid[i] <= 1'b0;
+
 Histagram_chane
 #(
 .DATA_SIZE   (DATA_SIZE  ),
@@ -92,11 +127,10 @@ Histagram_chane
 )
 Histagram_chane_inst
 (
-    .clk200(clk200),
     .clk   (clk   ),
     .rstn  (rstn  ),
 
-    .Valid (WriteData[i]),
+    .Valid (WriteValid[i]),
     .Data  (RegData[i]),
 
 	.FremMemRD    (FremMemRD    ),
@@ -155,7 +189,7 @@ always @(posedge clk or negedge rstn)
 assign FremMemRD    = {4{ReadCounterOn}};
 assign FremMemRDAdd = ReadCounter[LENGTH_SIZE-1:2];
 
-wire [1:0] SelectFrame = DelReadCounter[1][1:0];
+wire [1:0] SelectFrame = DelReadCounter[1][1:0]+Split;
 reg [DATA_SIZE-1:0] Send_FeamData_Reg;
 always @(posedge clk or negedge rstn)
     if (!rstn) Send_FeamData_Reg <= 0;

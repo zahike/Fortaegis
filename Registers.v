@@ -49,9 +49,8 @@ output StartColl,
     
 reg RegStartColl;
 always @(posedge FCLK_CLK1 or negedge rstn)
-    if (!rstn) RegStartColl <= 1'b0;
+    if (!rstn) RegStartColl <= 1'b1;
      else if (APB_M_0_penable && APB_M_0_psel && APB_M_0_pwrite && (APB_M_0_paddr[7:0] == 8'h00)) RegStartColl <= APB_M_0_pwdata[0]; 
-//     else if (RegStartColl) RegStartColl <= 1'b0; 
 assign StartColl = RegStartColl;     
 reg [31:0]prdata;
 always @(posedge FCLK_CLK1 or negedge rstn)

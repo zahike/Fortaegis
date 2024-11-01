@@ -40,9 +40,6 @@ always #2.857 clk350 = ~clk350;
 
 
 Frotaegis_Top Frotaegis_Top_inst(
-    .clk200(clk200),
-    .clk350(clk350),
-    .rstn  (rstn  )
 );
 
 endmodule
