@@ -65,9 +65,25 @@ wire [LENGTH_SIZE-1:0] HisMemRDData[0:3] ;
 
 reg [2:0]DevValid200;
 reg [3:0]DevValid350;
+reg [1:0] Split200;
+reg ExCollect;
+always@(posedge clk200 or negedge rstn)
+	if (!rstn) begin 
+		Split200 <= 2'b00;
+		ExCollect <= 1'b0;
+			end
+	 else if (Collect) begin
+		Split200 <= Split200 + 1;
+		ExCollect <= Collect;
+			end		
+	 else if (ExCollect) begin 
+		Split200 <= Split200 + 1;
+		if (Split200 == 2'b11) ExCollect <= 1'b0;
+			end
+
 always@(posedge clk200 or negedge rstn)
 	if (!rstn) DevValid200 <= 3'b000;
-	 else DevValid200 <= {DevValid200[1:0],(Collect && Valid)};
+	 else DevValid200 <= {DevValid200[1:0],((Collect || ExCollect) && Valid)};
 always@(posedge clk or negedge rstn)
 	if (!rstn) DevValid350 <= 3'b000;
 	 else DevValid350 <= {DevValid350[1:0],DevValid200[2]};
@@ -79,7 +95,7 @@ fifo_generator_0 fifo_generator_0 (
   .wr_clk(clk200),  // input wire wr_clk
   .rd_clk(clk),  // input wire rd_clk
   .din({{12-DATA_SIZE{1'b0}},Data}),        // input wire [11 : 0] din
-  .wr_en(Valid && Collect),    // input wire wr_en
+  .wr_en(Valid && (Collect || ExCollect)),    // input wire wr_en
   .rd_en(rd_en),    // input wire rd_en
   .dout(dout),      // output wire [11 : 0] dout
   .full(),      // output wire full
@@ -147,7 +163,7 @@ endgenerate
 reg [19:0] DelCollect;
 always @(posedge clk or negedge rstn)
     if (!rstn)  DelCollect <= 20'h00000;
-	 else DelCollect <= {DelCollect[18:0],Collect};
+	 else DelCollect <= {DelCollect[18:0],(Collect || ExCollect)};
 
 reg [LENGTH_SIZE-1:0] ReadCounter;
 reg                   ReadCounterOn;
@@ -187,7 +203,7 @@ always @(posedge clk or negedge rstn)
 assign FremMemRD    = {4{ReadCounterOn}};
 assign FremMemRDAdd = ReadCounter[LENGTH_SIZE-1:2];
 
-wire [1:0] SelectFrame = DelReadCounter[1][1:0]+Split;
+wire [1:0] SelectFrame = DelReadCounter[1][1:0];
 reg [DATA_SIZE-1:0] Send_FeamData_Reg;
 always @(posedge clk or negedge rstn)
     if (!rstn) Send_FeamData_Reg <= 0;
