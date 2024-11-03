@@ -64,7 +64,7 @@ wire [DATA_SIZE-1:0]   HisMemRDAdd  ;
 wire [LENGTH_SIZE-1:0] HisMemRDData[0:3] ;
 
 reg [2:0]DevValid200;
-reg [2:0]DevValid350;
+reg [3:0]DevValid350;
 always@(posedge clk200 or negedge rstn)
 	if (!rstn) DevValid200 <= 3'b000;
 	 else DevValid200 <= {DevValid200[1:0],(Collect && Valid)};
@@ -79,7 +79,7 @@ fifo_generator_0 fifo_generator_0 (
   .wr_clk(clk200),  // input wire wr_clk
   .rd_clk(clk),  // input wire rd_clk
   .din({{12-DATA_SIZE{1'b0}},Data}),        // input wire [11 : 0] din
-  .wr_en(Valid),    // input wire wr_en
+  .wr_en(Valid && Collect),    // input wire wr_en
   .rd_en(rd_en),    // input wire rd_en
   .dout(dout),      // output wire [11 : 0] dout
   .full(),      // output wire full
@@ -91,9 +91,7 @@ always @(posedge clk or negedge rstn)
 			Split <= 2'b00;
 			SplitValid <= 1'b0;
 				end
-//	 else if (!Collect) begin 
 	 else if (!DevValid350[1]) begin 
-//			Split <= 2'b00;
 			SplitValid <= 1'b0;
 				end
      else begin 
@@ -108,7 +106,7 @@ generate
 				WriteValid[i] <= 1'b0;
 				RegData[i]    <=    0;
 					end 
-			 else if (!DevValid350[1]) begin 
+			 else if (!DevValid350[2]) begin 
 				WriteValid[i] <= 1'b0;
 				RegData[i]    <=    0;
 					end 
