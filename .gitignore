@@ -1,0 +1,6 @@
+
+fpga_sw/*/*
+rtl/fifo_generator_0/*
+!rtl/fifo_generator_0/fifo_generator_0.xci
+work/Frotaegis_BD/*
+work/Frotaegis_Proj/*
