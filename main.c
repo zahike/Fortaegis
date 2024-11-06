@@ -67,35 +67,18 @@ data = 0;
 for (int i=0;i<0x8000;i++)
 {
 	if (FrameData[i] == Data1Value) {
-//		xil_printf("Data1 %x \n\r",i*4);
 		Data1Arry[CounData1] = 4*i;
 		CounData1++;
-//		Results[Count] = 4*i;
-//		Count++;
-//		Results[Count] = Data1Value;
-//		Count++;
 	}
 	if (FrameData[i] == Data2Value) {
-//		xil_printf("Data2 %x \n\r",i*4);
 		Data2Arry[CounData2] = 4*i;
 		CounData2++;
-//		Results[Count] = 4*i;
-//		Count++;
-//		Results[Count] = Data2Value;
-//		Count++;
 	}
 	if (FrameData[i] == Data3Value) {
-//		xil_printf("Data3 %x \n\r",i*4);
 		Data3Arry[CounData3] = 4*i;
 		CounData3++;
-//		Results[Count] = 4*i;
-//		Count++;
-//		Results[Count] = Data3Value;
-//		Count++;
 	}
 }
-
-//Xil_DCacheInvalidateRange((u32)Results, 0x20000);
 
 	return XST_SUCCESS;
 }
