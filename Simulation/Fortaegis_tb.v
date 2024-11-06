@@ -23,7 +23,7 @@
 module Fortaegis_tb();
 reg clk200;
 reg clk350;
-reg rstn  ;
+reg rstn  ; 
 initial begin 
 clk200 = 1'b0;
 clk350 = 1'b0;

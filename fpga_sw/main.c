@@ -17,7 +17,7 @@
 u32 *APB = XPAR_APB_M_0_BASEADDR;
 u32 *DMA = XPAR_AXIDMA_0_BASEADDR;
 
-int main (void)
+int main (void) 
 {
 	u32 *FrameData = DATA_BUFF;
 	u32 data;
