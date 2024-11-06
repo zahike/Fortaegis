@@ -124,7 +124,6 @@ generate
 					end 
 			 else if (!DevValid350[2]) begin 
 				WriteValid[i] <= 1'b0;
-				RegData[i]    <=    0;
 					end 
 			 else if (SplitValid && (Split == i)) begin 
 					WriteValid[i] <= SplitValid;
@@ -200,7 +199,7 @@ always @(posedge clk or negedge rstn)
 
 ////////////////// Collect Fram  //////////////////
 				
-assign FremMemRD    = {4{ReadCounterOn}};
+assign FremMemRD    = ReadCounterOn;
 assign FremMemRDAdd = ReadCounter[LENGTH_SIZE-1:2];
 
 wire [1:0] SelectFrame = DelReadCounter[1][1:0];
@@ -219,7 +218,7 @@ assign FramAdd  = DelReadCounter[2];
 assign FramEn   = FremEn[2];
 
 ////////////////// Calculate Top Values //////////////////
-assign HisMemRD    = (ReadCounter[LENGTH_SIZE-1:DATA_SIZE] == 0) ? {4{ReadCounterOn}}      : 0;
+assign HisMemRD    = (ReadCounter[LENGTH_SIZE-1:DATA_SIZE] == 0) ? ReadCounterOn              : 0;
 assign HisMemRDAdd = (ReadCounter[LENGTH_SIZE-1:DATA_SIZE] == 0) ? ReadCounter[DATA_SIZE-1:0] : 0; 
 
 reg [LENGTH_SIZE-1:0] Send_His_Reg[0:2];
@@ -235,10 +234,10 @@ always @(posedge clk or negedge rstn)
 			Send_His_Reg[2] <= Send_His_Reg[0] + Send_His_Reg[1];
 			  end
 
-reg [4:0] HisEn ;
+reg [7:0] HisEn ;
 always @(posedge clk or negedge rstn)
     if (!rstn)  HisEn  <= 5'b00000;
-	 else HisEn  <= {HisEn [3:0],HisMemRD };
+	 else HisEn  <= {HisEn [6:0],HisMemRD };
 
 wire [LENGTH_SIZE-1:0] HistaData = Send_His_Reg[2];
 wire [DATA_SIZE-1:0]   HistaAdd  = (HisEn[3]) ? DelReadCounter[3] : 0;
@@ -280,7 +279,7 @@ CompReg_inst
    end 
 endgenerate
 
-assign SortValid = (HisEn == 5'b10000) ? 1'b1 : 1'b0;
+assign SortValid = (HisEn == 8'h80) ? 1'b1 : 1'b0;
 
 assign MaxCountData1 = SortData[1];
 assign MaxCount1     = SortCountNum[1];

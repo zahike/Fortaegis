@@ -26,7 +26,7 @@ parameter DATA_ZISE  = 4,
 parameter LENGTH_ADD = 5
 )
 (
- input clk,
+ input FCLK_CLK1,
  input rstn,
  
 input [31:0]APB_M_0_paddr,
@@ -48,12 +48,12 @@ output StartColl,
    );
     
 reg RegStartColl;
-always @(posedge clk or negedge rstn)
+always @(posedge FCLK_CLK1 or negedge rstn)
     if (!rstn) RegStartColl <= 1'b0;
      else if (APB_M_0_penable && APB_M_0_psel && APB_M_0_pwrite && (APB_M_0_paddr[7:0] == 8'h00)) RegStartColl <= APB_M_0_pwdata[0]; 
 assign StartColl = RegStartColl;     
 reg [31:0]prdata;
-always @(posedge clk or negedge rstn)
+always @(posedge FCLK_CLK1 or negedge rstn)
     if (!rstn) prdata <= 32'h00000000;
      else begin 
         case (APB_M_0_paddr[7:0])
@@ -69,7 +69,7 @@ assign APB_M_0_prdata = prdata;
 
 wire enReady = (APB_M_0_penable && APB_M_0_psel) ? 1'b1 : 1'b0;     
 reg ready;
-always @(posedge clk or negedge rstn)
+always @(posedge FCLK_CLK1 or negedge rstn)
     if (!rstn) ready <= 1'b0;
      else if (enReady) ready <= enReady;
      else  ready <= 1'b0;

@@ -82,12 +82,12 @@ assign FremMemRDData = FremMemRDDataReg;
 
 ////////////////////////////// Histogram Logic //////////////////////////////
 wire HisRDAdd = Valid;	
-reg  HisWRAdd;	
-reg[1:0]  HisRDSub;	
+reg[1:0]  HisWRAdd;	
+reg[3:0]  HisRDSub;	
 reg  HisWRSub;
 always @(posedge clk or negedge rstn)
-	if (!rstn) HisWRAdd <= 1'b0;	
-	 else HisWRAdd <= HisRDAdd;	
+	if (!rstn) HisWRAdd <= 2'b00;	
+	 else HisWRAdd <= {HisWRAdd[0],HisRDAdd};	
 
 always @(posedge clk or negedge rstn)
 	if (!rstn) begin
@@ -95,22 +95,22 @@ always @(posedge clk or negedge rstn)
          HisWRSub <= 1'b0;
 			end
 	 else begin
-			HisRDSub <= {HisRDSub[0],(Valid && FIFOFull)};
-			HisWRSub <= HisRDSub[1];
+			HisRDSub <= {HisRDSub[2:0],(Valid && FIFOFull)};
+			HisWRSub <= HisRDSub[3];
 			 end
 	 
 ////////////////// Histogram Logic //////////////////
-wire [LENGTH_SIZE-1:0] HisIncre;
-wire [LENGTH_SIZE-1:0] HisDecre;
+reg  [LENGTH_SIZE-1:0] HisIncre;
+reg  [LENGTH_SIZE-1:0] HisDecre;
 
-wire HisMem_WRen   = HisWRAdd || HisWRSub;
-wire [DATA_SIZE-1:0] HisMem_WRadd  = (HisWRAdd) ? Data :
+wire HisMem_WRen   = HisWRAdd[1] || HisWRSub;
+wire [DATA_SIZE-1:0] HisMem_WRadd  = (HisWRAdd[1]) ? Data :
                                      (HisWRSub) ? FramMem_out : 0;
-wire [LENGTH_SIZE-1:0] HisMem_WRdata = (HisWRAdd) ? HisIncre : 
+wire [LENGTH_SIZE-1:0] HisMem_WRdata = (HisWRAdd[1]) ? HisIncre : 
                                        (HisWRSub) ? HisDecre : 0;
-wire HisMem_RDen   = (HisRDAdd || HisRDSub[1] || HisMemRD) ? 1'b1 : 1'b0;
+wire HisMem_RDen   = (HisRDAdd || HisRDSub[2] || HisMemRD) ? 1'b1 : 1'b0;
 wire [DATA_SIZE-1:0] HisMem_RDadd  = (HisRDAdd) ? Data : 
-                                     (HisRDSub[1]) ? FramMem_out : 
+                                     (HisRDSub[2]) ? FramMem_out : 
                                      (HisMemRD) ? HisMemRDAdd : 0;
    (* ram_style="block" *)
 reg [LENGTH_SIZE-1:0] HisMem [0:DATA_NUM-1];
@@ -128,8 +128,17 @@ always @(posedge clk)
 always @(posedge clk)
 	if (HisMem_RDen) HisMem_out <= HisMem[HisMem_RDadd];
 
-assign HisIncre = HisMem_out + 1;
-assign HisDecre = HisMem_out - 1;
+//assign HisIncre = HisMem_out + 1;
+//assign HisDecre = HisMem_out - 1;
+always @(posedge clk or negedge rstn)
+	if (!rstn) begin
+        HisIncre <= 0;
+        HisDecre <= 0;
+	       end
+	 else begin
+        HisIncre <= HisMem_out + 1;
+        HisDecre <= HisMem_out - 1;
+	       end
 	
 //////////////// End Histogram Logic ////////////////
 

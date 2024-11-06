@@ -33,11 +33,23 @@ rstn   = 1'b1;
 #2600;
 @(posedge clk350);#1;
 force Frotaegis_Top_inst.Collect = 1'b0;
+end
+always #2.5   clk200 = ~clk200;
+always #1.428 clk350 = ~clk350;
+initial begin 
+force Frotaegis_Top_inst.StartColl   = 1'b0;
+force Frotaegis_Top_inst.clk200 = clk200;
+force Frotaegis_Top_inst.clk350 = clk350;
+force Frotaegis_Top_inst.rstn   = rstn;
+@(posedge rstn);
+#150;
+@(posedge clk200);#1;
+force Frotaegis_Top_inst.StartColl   = 1'b1;
+#1000000;
+@(posedge clk200);#1;
+force Frotaegis_Top_inst.StartColl   = 1'b0;
 
 end
-always #5     clk200 = ~clk200;
-always #2.857 clk350 = ~clk350;
-
 
 Frotaegis_Top Frotaegis_Top_inst(
 );

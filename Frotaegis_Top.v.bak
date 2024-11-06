@@ -129,7 +129,7 @@ Registers
 )
 Registers_inst
 (
- .clk(clk200),
+ .FCLK_CLK1(clk200),
  .rstn     (rstn     ),
  
 .APB_M_0_paddr  (APB_M_0_paddr  ),

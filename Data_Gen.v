@@ -38,11 +38,12 @@ always @(posedge clk or negedge rstn)
     if (!rstn)  DataValid <= 0;
      else DataValid <= {DataValid[22:0],rstn};        
 always @(posedge clk or negedge rstn)
-    if (!rstn) Tcount <= 14 ; 
-     else if (DataValid[23]) begin 
-			Tcount <= Tcount - 1;
-			if (Tcount == 0) Tcount <= 14 ;
-			 end
+    if (!rstn) Tcount <= 0 ; 
+     else if (DataValid[23]) Tcount <= Tcount + 1;
+//     else if (DataValid[23]) begin 
+//			Tcount <= Tcount - 1;
+//			if (Tcount == 0) Tcount <= 14 ;
+//			 end
 			 
 reg [15:0] lfsr;
 wire lfsr_xnor;
